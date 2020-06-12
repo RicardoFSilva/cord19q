@@ -29,12 +29,12 @@ class Report(object):
 
         Args:
             queries: queries to execute
-            topn: number of documents to return
+            topn: number of section results to return
             category: report category
             output: output I/O object
         """
 
-        # Default to 50 documents if not specified
+        # Default to 50 results if not specified
         topn = topn if topn else 50
 
         # Get columns for category
@@ -66,7 +66,7 @@ class Report(object):
             self.headers(output, self.names)
 
             # Generate table rows
-            self.articles(output, query, topn, results)
+            self.articles(output, query, results)
 
             # Write section separator
             self.separator(output)
@@ -80,9 +80,9 @@ class Report(object):
         """
 
         if category == "risk":
-            return ["Date", "Title", "Severe", "Fatality", "Design", "Sample", "Sampling Method", "Matches", "Entry"]
+            return ["Date", "Title", "Severe", "Fatality", "Design", "Sample", "Sampling Method", "Matches"]
 
-        return ["Date", "Title", "Design", "Sample", "Sampling Method", "Matches", "Entry"]
+        return ["Date", "Title", "Design", "Sample", "Sampling Method", "Matches"]
 
     def highlights(self, output, results, topn):
         """
@@ -104,26 +104,25 @@ class Report(object):
             # Write out highlight row
             self.highlight(output, article, highlight)
 
-    def articles(self, output, query, topn, results):
+    def articles(self, output, query, results):
         """
         Builds an articles section.
 
         Args:
             output: output file
             query: search query
-            topn: number of documents to return
             results: search results
         """
 
         # Get results grouped by document
-        documents = Query.documents(results, topn)
+        documents = Query.documents(results)
 
         # Collect matching rows
         rows = []
 
         for uid in documents:
             # Get article metadata
-            self.cur.execute("SELECT Published, Title, Reference, Publication, Source, Design, Size, Sample, Method, Entry " +
+            self.cur.execute("SELECT Published, Title, Reference, Publication, Source, Design, Size, Sample, Method " +
                              "FROM articles WHERE id = ?", [uid])
             article = self.cur.fetchone()
 

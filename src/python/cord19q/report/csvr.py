@@ -5,7 +5,6 @@ CSV report module
 import csv
 import os
 import os.path
-import string
 
 from nltk.corpus import stopwords
 
@@ -44,7 +43,7 @@ class CSV(Report):
         """
 
         # Build file name up to 30 chars, prevent breaking on word
-        tokens = [token.strip(string.punctuation) for token in query.split() if token.lower() not in CSV.STOP_WORDS]
+        tokens = [token for token in query.split() if token.lower() not in CSV.STOP_WORDS]
         name = ""
         for token in tokens:
             if len(name) + len(token) > 30:
@@ -80,11 +79,9 @@ class CSV(Report):
         if "Severe" in names:
             self.names = ["Date", "Study", "Study Link", "Journal", "Severe", "Severe Significant", "Severe Age Adjusted",
                           "Severe OR Calculated or Extracted", "Fatality", "Fatality Significant", "Fatality Age Adjusted",
-                          "Fatality OR Calculated or Extracted", "Design", "Sample", "Study Population", "Sample Text", "Matches",
-                          "Entry"]
+                          "Fatality OR Calculated or Extracted", "Design", "Sample", "Study Population", "Sample Text", "Matches"]
         else:
-            self.names = ["Date", "Study", "Study Link", "Journal", "Design", "Sample", "Study Population", "Sample Text", "Matches",
-                          "Entry"]
+            self.names = ["Date", "Study", "Study Link", "Journal", "Design", "Sample", "Study Population", "Sample Text", "Matches"]
 
         # Write out column names
         self.write(self.names)
@@ -93,7 +90,7 @@ class CSV(Report):
         columns = {}
 
         # Date
-        columns["Date"] = Query.date(article[0]) if article[0] else ""
+        columns["Date"] = Query.date(article[0])
 
         # Study
         columns["Study"] = article[1]
@@ -142,9 +139,6 @@ class CSV(Report):
 
         # Top Matches
         columns["Matches"] = "\n\n".join([Query.text(text) for _, text in sections])
-
-        # Entry Date
-        columns["Entry"] = article[9] if article[9] else ""
 
         return columns
 
