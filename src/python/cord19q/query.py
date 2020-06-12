@@ -91,7 +91,7 @@ class Query(object):
             embeddings: embeddings model
             cur: database cursor
             query: query text
-            topn: number of documents to return
+            topn: number of results to return
 
         Returns:
             search results
@@ -102,8 +102,7 @@ class Query(object):
         # Tokenize search query
         query = Tokenizer.tokenize(query)
 
-        # Retrieve topn * 5 to account for duplicate matches
-        for uid, score in embeddings.search(query, topn * 5):
+        for uid, score in embeddings.search(query, topn):
             if score >= 0.6:
                 cur.execute("SELECT Article, Text FROM sections WHERE id = ?", [uid])
                 results.append((uid, score) + cur.fetchone())
@@ -130,17 +129,15 @@ class Query(object):
             if score >= 0.35:
                 sections[text] = (uid, text)
 
-        # Return up to 5 highlights
-        return Highlights.build(sections.values(), min(topn, 5))
+        return Highlights.build(sections.values(), topn)
 
     @staticmethod
-    def documents(results, topn):
+    def documents(results):
         """
         Processes search results and groups by article.
 
         Args:
             results: search results
-            topn: number of documents to return
 
         Returns:
             results grouped by article
@@ -159,9 +156,7 @@ class Query(object):
         for uid in documents:
             documents[uid] = sorted(list(documents[uid]), reverse=True)
 
-        # Get documents with top n best sections
-        topn = sorted(documents, key=lambda k: max([x[0] for x in documents[k]]), reverse=True)[:topn]
-        return {uid: documents[uid] for uid in topn}
+        return documents
 
     @staticmethod
     def authors(authors):
@@ -252,7 +247,7 @@ class Query(object):
         # Study design type mapping
         mapping = {1:"Systematic review", 2:"Randomized control trial", 3:"Non-randomized trial",
                    4:"Prospective observational", 5:"Time-to-event analysis", 6:"Retrospective observational",
-                   7:"Cross-sectional", 8:"Case series", 9:"Modeling", 0:"Other"}
+                   7:"Cross-sectional", 8:"Case series", 9:"Simulation", 0:"Other"}
 
         return mapping[design]
 
@@ -298,7 +293,7 @@ class Query(object):
             embeddings: embeddings model
             db: open SQLite database
             query: query string
-            topn: number of query results
+            n: number of query results
         """
 
         # Default to 10 results if not specified
@@ -319,13 +314,13 @@ class Query(object):
         print()
 
         # Get results grouped by document
-        documents = Query.documents(results, topn)
+        documents = Query.documents(results)
 
         print(Query.render("# Articles") + "\n")
 
         # Print each result, sorted by max score descending
         for uid in sorted(documents, key=lambda k: sum([x[0] for x in documents[k]]), reverse=True):
-            cur.execute("SELECT Title, Published, Publication, Design, Size, Sample, Method, Entry, Id, Reference FROM articles WHERE id = ?", [uid])
+            cur.execute("SELECT Title, Published, Publication, Design, Size, Sample, Method, Id, Reference FROM articles WHERE id = ?", [uid])
             article = cur.fetchone()
 
             print("Title: %s" % article[0])
@@ -335,9 +330,8 @@ class Query(object):
             print("Severity: %s" % Query.stat(cur, article[6], query))
             print("Sample: %s" % Query.sample(article[4], article[5]))
             print("Method: %s" % Query.text(article[6]))
-            print("Entry: %s" % article[7])
-            print("Id: %s" % article[8])
-            print("Reference: %s" % article[9])
+            print("Id: %s" % article[7])
+            print("Reference: %s" % article[8])
 
             # Print top matches
             for score, text in documents[uid]:
